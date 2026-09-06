@@ -38,15 +38,18 @@ Respond ONLY with a JSON object of this exact shape, no other text:
 
 def _build_user_prompt(understanding: UnderstandingResult, memories: list[MemoryEntry]) -> str:
     memory_lines = "\n".join(
-        f"- [{m['category']}] {m['content']} (relevance {m['relevance_score']:.2f})"
+        f"- [{m.category}] {m.content} (relevance {m.relevance_score:.2f})"
         for m in memories
     ) or "(no relevant memories found)"
 
-    goals_lines = ", ".join(understanding["current_goals"]) or "(none stated)"
+    goals_lines = ", ".join(understanding.current_goals) or "(none stated)"
 
-    return f"""Emotion: {understanding['emotion']}
-Intent: {understanding['intent']}
+    search_terms_line = ", ".join(understanding.search_terms) or "(none - retrieval used raw message)"
+
+    return f"""Emotion: {understanding.emotion}
+Intent: {understanding.intent}
 Current goals: {goals_lines}
+Search terms used for retrieval: {search_terms_line}
 
 Relevant memories about this person:
 {memory_lines}

@@ -14,6 +14,7 @@ def make_understanding(emotion="frustrated", intent="seeking_advice") -> Underst
         intent=intent,
         working_memory=["I keep messing up binary tree traversal"],
         current_goals=["clear placements by Dec"],
+        search_terms=["tree traversal", "exam stress"],
     )
 
 
@@ -43,7 +44,7 @@ def test_generates_three_distinct_candidates():
     candidates = generate_candidates(understanding, memories, llm_call=fake_llm_call)
 
     assert len(candidates) == 3, "should generate exactly 3 candidates"
-    reply_texts = [c["reply_text"] for c in candidates]
+    reply_texts = [c.reply_text for c in candidates]
     assert len(set(reply_texts)) == 3, "candidates should be textually distinct"
 
 
@@ -54,7 +55,7 @@ def test_each_candidate_has_predicted_reaction():
     candidates = generate_candidates(understanding, memories, llm_call=fake_llm_call)
 
     for c in candidates:
-        assert c["predicted_reaction"], "every candidate must carry a ToM prediction (folded-in, not a separate call)"
+        assert c.predicted_reaction, "every candidate must carry a ToM prediction (folded-in, not a separate call)"
 
 
 def test_risk_flag_present_when_relevant():
@@ -63,7 +64,7 @@ def test_risk_flag_present_when_relevant():
 
     candidates = generate_candidates(understanding, memories, llm_call=fake_llm_call)
 
-    flagged = [c for c in candidates if c["risk_flag"]]
+    flagged = [c for c in candidates if c.risk_flag]
     assert len(flagged) >= 1, "expected at least one candidate to carry a risk flag in this scenario"
 
 
@@ -83,3 +84,11 @@ def test_raises_on_empty_candidates():
         assert False, "should have raised ValueError on zero candidates"
     except ValueError:
         pass
+
+
+def test_unknown_emotion_does_not_crash():
+    # emotion outside KNOWN_EMOTIONS should pass through, not raise -
+    # confirms the "fail soft on unexpected LLM output" design decision
+    understanding = make_understanding(emotion="bewildered", intent="seeking_advice")
+    candidates = generate_candidates(understanding, [], llm_call=fake_llm_call)
+    assert len(candidates) == 3
