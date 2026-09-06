@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+groq
+sentence-transformers
+sqlite-vec
+numpy
+pytest
