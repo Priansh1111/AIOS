@@ -35,10 +35,39 @@ Category = Literal["goal", "weak_topic", "win", "deadline", "preference"]
 # Person A produces this. Person B consumes it. Nothing else.
 # ---------------------------------------------------------------------
 
+# ---------------------------------------------------------------------
+# Routing flag. Decides which downstream stages agent_loop.py runs.
+# Kept as a strict Literal (unlike emotion/intent above) because this one
+# drives actual branching logic, not just prompt framing - an unexpected
+# value here needs to fail loud, not silently pass through. The default
+# fallback in understanding.py's prompt MUST be "full_pipeline" whenever
+# the model is uncertain - a wrong guess toward "passthrough" risks
+# giving someone a cheap, un-reasoned-about reply on a message that
+# actually needed the full emotional pipeline. Cost savings are not
+# worth that failure mode.
+#
+#   full_pipeline    - normal conversational turn, needs Retrieval +
+#                       Candidate Generation + Filtering (default/fallback)
+#   passthrough       - trivial acknowledgment ("ok thanks", "lol") -
+#                        skip everything past Understanding, one cheap reply
+#   task_continuation - resuming a paused task (code, a list, anything
+#                        with in-progress state, e.g. user says "continue").
+#                        Skips the EMOTIONAL reasoning stages, but still
+#                        needs working_memory - which this same call
+#                        already receives - to know what's being resumed.
+# ---------------------------------------------------------------------
+ResponseMode = Literal["full_pipeline", "passthrough", "task_continuation"]
+
 class UnderstandingResult(BaseModel):
     emotion: str          # should be one of KNOWN_EMOTIONS, but not hard-enforced - see note above
     intent: str           # should be one of KNOWN_INTENTS, but not hard-enforced - see note above
     working_memory: list[str]
+    response_mode: ResponseMode = "full_pipeline"
+    # Routing flag classified from working_memory + the current message in
+    # THIS SAME Understanding call - no separate history-lookup step
+    # needed, since working_memory already carries the recent turns this
+    # classification depends on (e.g. seeing an in-progress code block to
+    # correctly classify "continue" as task_continuation).
     # last N turns of this session, condensed - cheap, no retrieval needed
 
     current_goals: list[str]
